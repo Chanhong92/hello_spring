@@ -1,67 +1,50 @@
 package devYangCH.hello.repository;
 
 import devYangCH.hello.domain.Member;
+import devYangCH.hello.service.MemberService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class MemoryMemberRepositoryTest {
-
-    //인터페이스 테스트하지 않으니 구현 클래스로 타입 설정
-    MemoryMemberRepository repository = new MemoryMemberRepository();
-
-    // 아래 테스트 메서드 동작이 끝날 때마다 호출된다.
-    @AfterEach
-    public void afterEach() {
-        repository.clearStore();
-    }
+@SpringBootTest
+@Transactional
+class MemberServiceIntegrationTest {
+    @Autowired MemberService memberService;
+    @Autowired MemberRepository memberRepository;
 
     @Test
-    public void save() {
+    public void 회원가입() throws Exception {
+//Given
         Member member = new Member();
-        member.setName("spring");
-
-        repository.save(member);
-
-        Member result = repository.findById(member.getId()).get();
-
-        System.out.println("(result == member) = " + (result == member));
-        assertThat(member).isEqualTo(result);
+        member.setName("hello");
+//When
+        Long saveId = memberService.join(member);
+//Then
+        Member findMember = memberRepository.findById(saveId).get();
+        assertEquals(member.getName(), findMember.getName());
     }
-
     @Test
-    public void findByName() {
+    public void 중복_회원_예외() throws Exception {
+//Given
         Member member1 = new Member();
-        member1.setName("spring1");
-        repository.save(member1);
+        member1.setName("spring");
 
         Member member2 = new Member();
-        member2.setName("spring2");
-        repository.save(member2);
-
-        //Optional<Member> result = repository.findByName("spring1");
-        Member result = repository.findByName("spring1").get();
-
-        assertThat(result).isEqualTo(member1);
-    }
-
-    @Test
-    public void findAll() {
-        Member member1 = new Member();
-        member1.setName("spring1");
-        repository.save(member1);
-
-        Member member2 = new Member();
-        member2.setName("spring2");
-        repository.save(member2);
-
-        List<Member> result = repository.findAll();
-
-        assertThat(result.size()).isEqualTo(2);
+        member2.setName("spring");
+//When
+        memberService.join(member1);
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> memberService.join(member2));//예외가 발생해야 한다.
+        assertThat(e.getMessage()).isEqualTo("이미 존재하는 회원입니다.");
     }
 }
